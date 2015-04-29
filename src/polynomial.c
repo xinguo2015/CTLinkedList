@@ -9,18 +9,19 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <string.h>
 #include "polynomial.h"
 
 
 /**
  * @Synopsis alloc a node for the polynomial.
  *
- * @Returns a pointer to the node 
+ * @Returns a pointer to the node
  */
 PolyNode * newNode()
 {
 	PolyNode * p = (PolyNode*)malloc(sizeof(PolyNode));
-	if( ! p ) 
+	if( ! p )
 	{
 		fprintf(stderr,"Failed to alloc memory for PolyNode\n");
 		return NULL;
@@ -40,7 +41,7 @@ PolyNode * newNode()
  */
 void freeNode(PolyNode **p)
 {
-	if( !p || !*p ) 
+	if( !p || !*p )
 		return;
 	free(*p);
 	*p = NULL; /* clear the reference to the release memory */
@@ -89,7 +90,7 @@ void insertBeforeHead(PolyNode *n, Polynomial *poly)
 	}
 	else
 	{
-		n->next = poly->head; 
+		n->next = poly->head;
 		poly->head = n;  /* update the head pointer */
 	}
 }
@@ -118,13 +119,13 @@ PolyNode * getTail(Polynomial *poly)
 void printPolynomial(Polynomial *poly)
 {
 	PolyNode *p;
-	for( p=poly->head; p; p=p->next ) 
+	for( p=poly->head; p; p=p->next )
 		printf("%d %d", p->coef, p->expo);
 	/* print the ending flags */
 	printf("0 -1\n");
 }
 
-void readPolyNode(PolyNode *n) 
+void readPolyNode(PolyNode *n)
 {
 	scanf("%d%d", &n->coef, &n->expo);
 	printf("coef=%d coef=%d ", n->coef, n->expo);
@@ -135,15 +136,76 @@ int isZeroNode(PolyNode *n)
 	return (n->coef==0);
 }
 
-Polynomial readPolynomial() 
+void skipOneLine(FILE *fp)
 {
+	int ch
+	while( (ch=fgetc(fp))!='\n' && ch!=EOF )
+		;
+}
+
+int isSpace(int ch)
+{
+	return (ch==' ' || ch=='\t' || ch=='\n');
+}
+
+int getWord(FILE *fp, char w[], int maxword)
+{
+	int wlen = 0, ch = fgetc(fp);
+	if( ch=='#' ) {
+		strcpy(w,"#");
+		return 1;
+	}
+	/*! 跳过空白字符 */
+	while ( isSpace(ch) )
+		ch=fgetc(fp);
+	if( ch==EOF )/* 文件结束 */
+		return 0;
+	while( wlen<maxword && ch>='a' && ch<='z' )
+	{
+		w[wlen++] = ch;
+		ch = fgetc(fp);
+	}
+	w[wlen] = '\0';
+	return wlen>0;
+}
+
+int getToken(FILE *fp)
+{
+	char tk[256];
+	/*! 读取一个单词 */
+	while ( 1 ) {
+		if( ! getWord(fp, tk, 256) )
+			return '\0';
+		/*! 分类 */
+		if( strcmp(tk,"polynomial")==0 )
+			return 'p'; /*多项式*/
+		else if( strcmp(tk,"t")==0 )
+			return 't'; /*单项式*/
+		else if( strcmp(tk,"e")==0 )
+			return 'e'; /*结束符*/
+		else if ( strcmp(tk,"#")==0 )
+			return '#'; /*注释行*/
+		else
+			return (-1);/*不认识的*/
+	}
+}
+
+Polynomial readPolynomial(FILE *fp)
+{
+	int tk;
 	Polynomial poly;
 	initPolynomial(&poly);
-	while ( 1 ) {
+	/*! 读取关键词polynomial */
+	while ((tk=getToken(fp))=='#' )
+		skipOneLine(fp); /*忽略注释行 */
+	if ( tk!='p' ) {
+		printf("Error in finding polynomial\n");
+		return poly;
+	}
+	/*! 读取单项式*/
+	while ((tk=getToken(fp))=='t' ) {
 		PolyNode n, *p;
 		readPolyNode(&n);
-		if( isZeroNode(&n) ) /* zero node indicates the "end" */
-			break;
 		p = newNode();
 		*p = n;
 		insertNodeByExpo(p, &poly);
@@ -161,7 +223,7 @@ void appendAfterTail(PolyNode *n, Polynomial *poly)
 {
 	PolyNode *t = getTail(poly);
 	if( t==NULL ) /* an empty polynomial */
-		poly->head = n; 
+		poly->head = n;
 	else
 		t->next = n; /* append to the tail */
 	n->next = NULL;
@@ -181,7 +243,7 @@ void insertNodeByExpo(PolyNode *n, Polynomial *poly)
 	/*! skip node smaller than node 'n', yielding a poiter 'p'
 	 *  of the first node that is greater than node 'n' */
 	while( p && p->expo < n->expo )
-	{	
+	{
 		pp = p;      /* track the previous node for insertion */
 		p = p->next; /* proceed to the next node */
 	}
@@ -261,9 +323,9 @@ void removeZeroNode(Polynomial *poly)
  * @Param    a the input and output polynomial
  * @Param    b the other input polynomial
  */
-void catPolynomial(Polynomial *polyA, Polynomial *polyB) 
+void catPolynomial(Polynomial *polyA, Polynomial *polyB)
 {
-	PolyNode *p, *n; 
+	PolyNode *p, *n;
 	for( p=polyB->head; p!=NULL; p=p->next ) {
 		n = findNodeByExpo(polyA,p->expo);
 		if( n ) /* found a term with the same exponential */
@@ -286,15 +348,15 @@ void catPolynomial(Polynomial *polyA, Polynomial *polyB)
  * @Returns  the sum of the polynomials
  */
 
-Polynomial addPolynomial(Polynomial *polyA, Polynomial *polyB) 
+Polynomial addPolynomial(Polynomial *polyA, Polynomial *polyB)
 {
 	Polynomial sum = duplicate(polyA);
 	catPolynomial(&sum, polyB);
 	return sum;
 }
 
-		
-Polynomial subPolynomial(Polynomial *polyA, Polynomial *polyB) 
+
+Polynomial subPolynomial(Polynomial *polyA, Polynomial *polyB)
 {
 	Polynomial dif = duplicate(polyB);
 	negativePolynomial( &dif );
@@ -302,7 +364,7 @@ Polynomial subPolynomial(Polynomial *polyA, Polynomial *polyB)
 	return dif;
 }
 
-Polynomial mulPolynomial(Polynomial *polyA, Polynomial *polyB) 
+Polynomial mulPolynomial(Polynomial *polyA, Polynomial *polyB)
 {
 	Polynomial prod;
 	PolyNode *a, *b, *n;

@@ -42,7 +42,7 @@ void insertNodeByExpo(PolyNode *n, Polynomial *poly);
 void appendAfterTail(PolyNode *n, Polynomial *poly);
 void printPolynomial(Polynomial *p);
 void readPolyNode(PolyNode *n);
-Polynomial readPolynomial();
+Polynomial readPolynomial(FILE *fp);
 PolyNode * newNode();
 Polynomial duplicate(Polynomial *poly);
 PolyNode * findNodeByExpo(Polynomial *poly, int expo);
